@@ -218,3 +218,7 @@ Asegúrate de tener instalados los siguientes programas:
 ## **Notas Adicionales**
 
 - Adjunto una coleccion de postman para que sea mas facil poder probar la api, *exam-api.postman_collection.json*
+- Diagrama:
+
+![image](https://github.com/user-attachments/assets/2d08f0bb-88ea-456b-a688-c10a6a76cce8)
+
