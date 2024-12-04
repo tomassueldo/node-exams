@@ -11,7 +11,8 @@ export const createUser = async (req: Request, res: Response) => {
         await userRepository.save(user);
         res.status(201).json(user);
     } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(400).json({ message: 'Error creating user', error: error.message || error });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Error creating user:', errorMessage);
+        res.status(400).json({ message: 'Error creating user', error: errorMessage });
     }
 };

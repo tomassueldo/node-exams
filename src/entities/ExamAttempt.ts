@@ -17,6 +17,9 @@ export class ExamAttempt {
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   startTime!: Date;
 
+  @Column({ default: false }) // Agregar el campo `completed`
+  completed!: boolean;
+
   @OneToMany(() => Answer, (answer) => answer.attempt, { cascade: true })
   answers!: Answer[];
 }
