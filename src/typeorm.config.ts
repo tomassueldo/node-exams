@@ -6,9 +6,15 @@ import { ExamAttempt } from './entities/ExamAttempt';
 import { User } from './entities/User';
 
 export const AppDataSource = new DataSource({
-  type: 'sqlite',
-  database: './data/app.db',
-  entities: [Exam, Question, Answer, ExamAttempt, User],
+  type: 'mysql',
+  host: 'db',
+  port: 3306,
+  username: 'root',
+  password: 'password',
+  database: 'exam_api',
+  entities: [
+    __dirname + '/entities/*.ts'
+  ],
   synchronize: true,
-  logging: true,
+  logging: false,
 });

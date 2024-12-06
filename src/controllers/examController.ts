@@ -4,10 +4,12 @@ import {Exam} from '../entities/Exam';
 import {Question} from '../entities/Question';
 import {ExamAttempt} from "../entities/ExamAttempt";
 import {Answer} from "../entities/Answer";
+import {TypeOfQuestion} from "../entities/TypeOfQuestion";
 
 export const createExam = async (req: Request, res: Response) => {
     const examRepository = AppDataSource.getRepository(Exam);
     const questionRepository = AppDataSource.getRepository(Question);
+    const typeRepository = AppDataSource.getRepository(TypeOfQuestion);
 
     const {title, questions} = req.body;
 
@@ -15,19 +17,27 @@ export const createExam = async (req: Request, res: Response) => {
         const exam = examRepository.create({title});
         const savedExam = await examRepository.save(exam);
 
-        // Mapear las preguntas y ajustarlas al tipo correcto
-        const questionEntities = questions.map((q: any) => ({
-            text: q.text,
-            type: q.type,
-            options: q.options ? JSON.stringify(q.options) : undefined,
-            exam: savedExam,
-        }));
+        const questionEntities = await Promise.all(
+            questions.map(async (q: any) => {
+                const questionType = await typeRepository.findOne({where: {type: q.type}});
+                if (!questionType) {
+                    throw new Error(`Invalid question type: ${q.type}`);
+                }
+                return questionRepository.create({
+                    text: q.text,
+                    type: questionType,
+                    options: q.options ? JSON.stringify(q.options) : null,
+                    exam: savedExam,
+                });
+            })
+        );
 
         const savedQuestions = await questionRepository.save(questionEntities);
 
         res.status(201).json({exam: savedExam, questions: savedQuestions});
     } catch (error) {
-        res.status(400).json({message: 'Error creating exam', error});
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        res.status(400).json({message: 'Error creating exam', error: errorMessage});
     }
 };
 
@@ -79,8 +89,6 @@ export const getExamResults = async (req: Request, res: Response): Promise<void>
 
 export const finishExam = async (req: Request, res: Response): Promise<void> => {
     const examAttemptRepository = AppDataSource.getRepository(ExamAttempt);
-    const answerRepository = AppDataSource.getRepository(Answer);
-
     const {attemptId} = req.body;
     const {id: examId} = req.params;
 
@@ -95,6 +103,14 @@ export const finishExam = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
+        const oneHourInMs = 60 * 60 * 1000;
+        const currentTime = new Date().getTime();
+        const startTime = new Date(attempt.startTime).getTime();
+        if (currentTime - startTime > oneHourInMs) {
+            res.status(400).json({message: 'Cannot finish exam, time limit exceeded'});
+            return;
+        }
+
         const totalQuestions = attempt.exam.questions.length;
         const totalAnswers = attempt.answers.length;
 
@@ -103,14 +119,12 @@ export const finishExam = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        // Marcar el intento como finalizado
         attempt.completed = true;
         await examAttemptRepository.save(attempt);
 
         res.status(200).json({message: 'Exam finished successfully', attempt});
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('Error:', errorMessage);
         res.status(400).json({message: 'An error occurred', error: errorMessage});
     }
 };
